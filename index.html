@@ -11,12 +11,12 @@
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #007BFF;
+            background-color: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             margin-right: 10px;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s ease-in-out;
         }
         button:hover {
             background-color: #0056b3;
@@ -25,12 +25,12 @@
             margin: 20px 0;
         }
         label {
-            display: block;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             font-weight: bold;
         }
         input[type="range"] {
             width: 100%;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -47,12 +47,28 @@
         <label for="volumeControl">Volume:</label>
         <input type="range" id="volumeControl" min="0" max="1" value="1" step="0.01">
     </div>
+    <div class="control-group">
+        <label for="lowFreq">Low Frequency Gain:</label>
+        <input type="range" id="lowFreq" min="-40" max="40" value="0" step="1">
+    </div>
+    <div class="control-group">
+        <label for="highFreq">High Frequency Gain:</label>
+        <input type="range" id="highFreq" min="-40" max="40" value="0" step="1">
+    </div>
 
     <script>
         var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         var audioBuffer;
         var sourceNode;
-        var gainNode = audioCtx.createGain(); // Create a GainNode for volume control
+        var gainNode = audioCtx.createGain();
+        
+        var lowShelfFilter = audioCtx.createBiquadFilter();
+        lowShelfFilter.type = "lowshelf";
+        lowShelfFilter.frequency.setValueAtTime(320, audioCtx.currentTime);
+        
+        var highShelfFilter = audioCtx.createBiquadFilter();
+        highShelfFilter.type = "highshelf";
+        highShelfFilter.frequency.setValueAtTime(3200, audioCtx.currentTime);
 
         function fetchAudio(url) {
             fetch(url)
@@ -65,22 +81,19 @@
 
         function playAudio() {
             if (audioBuffer) {
-                if (sourceNode) {
-                    sourceNode.stop();
-                }
-
+                if (sourceNode) sourceNode.disconnect();
                 sourceNode = audioCtx.createBufferSource();
                 sourceNode.buffer = audioBuffer;
 
                 var playbackSpeed = document.getElementById('speedControl').value;
                 sourceNode.playbackRate.value = playbackSpeed;
 
-                sourceNode.connect(gainNode);
+                sourceNode.connect(lowShelfFilter);
+                lowShelfFilter.connect(highShelfFilter);
+                highShelfFilter.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
 
                 sourceNode.start();
-            } else {
-                console.log("Audio buffer is not loaded.");
             }
         }
 
@@ -91,20 +104,30 @@
             }
         }
 
-        document.getElementById('volumeControl').addEventListener('input', function() {
-            var volume = this.value;
-            gainNode.gain.value = volume;
-        });
-
         document.getElementById('speedControl').addEventListener('input', function() {
             if (sourceNode) {
                 sourceNode.playbackRate.value = this.value;
             }
         });
 
+
+
+        document.getElementById('volumeControl').addEventListener('input', function() {
+            gainNode.gain.value = this.value;
+        });
+
+        document.getElementById('lowFreq').addEventListener('input', function() {
+            lowShelfFilter.gain.setValueAtTime(this.value, audioCtx.currentTime);
+        });
+
+        document.getElementById('highFreq').addEventListener('input', function() {
+            highShelfFilter.gain.setValueAtTime(this.value, audioCtx.currentTime);
+        });
+
         document.getElementById('stopButton').addEventListener('click', stopAudio);
         document.getElementById('playButton').addEventListener('click', playAudio);
 
+        // Fetch your audio file (replace 'path/to/your/audio.file' with the actual path)
         fetchAudio('audio/beat.mp3');
     </script>
 </body>
