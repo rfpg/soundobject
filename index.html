@@ -55,6 +55,13 @@
         <label for="highFreq">High Frequency Gain:</label>
         <input type="range" id="highFreq" min="-40" max="40" value="0" step="1">
     </div>
+    
+    <!--2d placement of sound using binaural web audio lib -->
+    <canvas id="spatialCanvas" width="400" height="400" style="border:1px solid #000;"></canvas>
+    <div>
+        <label for="zPosition">Z Position:</label>
+        <input type="range" id="zPosition" min="-10" max="10" value="0" step="0.1">
+    </div>
 
     <script>
         var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -69,6 +76,20 @@
         var highShelfFilter = audioCtx.createBiquadFilter();
         highShelfFilter.type = "highshelf";
         highShelfFilter.frequency.setValueAtTime(3200, audioCtx.currentTime);
+
+        // Create a panner node
+        var panner = audioCtx.createPanner();
+        panner.panningModel = 'HRTF';
+        panner.distanceModel = 'inverse';
+        panner.setPosition(1, 0, 0); // Position the audio source to the right of the listener
+        panner.orientationX.setValueAtTime(1, audioCtx.currentTime);
+        panner.orientationY.setValueAtTime(0, audioCtx.currentTime);
+        panner.orientationZ.setValueAtTime(0, audioCtx.currentTime);
+
+        const canvas = document.getElementById('spatialCanvas');
+        const ctx = canvas.getContext('2d');
+        const zPositionSlider = document.getElementById('zPosition');
+
 
         function fetchAudio(url) {
             fetch(url)
@@ -91,7 +112,8 @@
                 sourceNode.connect(lowShelfFilter);
                 lowShelfFilter.connect(highShelfFilter);
                 highShelfFilter.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
+                gainNode.connect(panner);
+                panner.connect(audioCtx.destination);
 
                 sourceNode.start();
             }
@@ -126,6 +148,64 @@
 
         document.getElementById('stopButton').addEventListener('click', stopAudio);
         document.getElementById('playButton').addEventListener('click', playAudio);
+
+
+        let isDragging = false;
+        let sourcePosition = { x: canvas.width / 2, y: canvas.height / 2 }; // Initialize source position
+
+
+        function draw() {
+              ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before redrawing
+
+              // Draw listener position
+              ctx.fillStyle = 'rgb(0, 0, 0)';
+              ctx.beginPath();
+              ctx.arc(canvas.width / 2, canvas.height / 2, 5, 0, Math.PI * 2, true); // Listener at center
+              ctx.fill();
+
+              // Draw source position
+              ctx.fillStyle = 'red';
+              ctx.beginPath();
+              ctx.arc(sourcePosition.x, sourcePosition.y, 5, 0, Math.PI * 2, true); // Source position
+              ctx.fill();
+          }
+
+          function updatePanner(x, y, z) {
+              const rect = canvas.getBoundingClientRect();
+              const normX = ((x - rect.left) / canvas.width) * 2 - 1;
+              const normY = -(((y - rect.top) / canvas.height) * 2 - 1);
+              const normZ = z;
+
+              panner.positionX.value = normX;
+              panner.positionY.value = normY;
+              panner.positionZ.value = normZ;
+
+              sourcePosition = { x: x - rect.left, y: y - rect.top };
+              draw();
+          }
+
+          canvas.addEventListener('mousedown', function(event) {
+              isDragging = true;
+              updatePanner(event.clientX, event.clientY, parseFloat(zPositionSlider.value));
+          });
+
+          canvas.addEventListener('mousemove', function(event) {
+              if (isDragging) {
+                  updatePanner(event.clientX, event.clientY, parseFloat(zPositionSlider.value));
+              }
+          });
+
+          window.addEventListener('mouseup', function() {
+              isDragging = false;
+          });
+
+
+          zPositionSlider.addEventListener('input', function() {
+                const z = parseFloat(this.value);
+                updatePanner(sourcePosition.x + canvas.getBoundingClientRect().left, sourcePosition.y + canvas.getBoundingClientRect().top, z);
+            });
+
+        draw(); // Initial draw to show the listener position
 
         // Fetch your audio file (replace 'path/to/your/audio.file' with the actual path)
         fetchAudio('audio/beat.mp3');
