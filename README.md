@@ -8,3 +8,6 @@
 | 3D Manipulation of Sound Objects         | 3D object controlled by mouse click        | Physical metaphor for spatial positioning in the scene                                                                                                      |
 | Camera Manipulation                      | Mouse click and drag for 3D rotation, 2D slider for constant motion | Familiar interface for discrete 3D camera control, plus the ability to create constant rotation to experience spatialized audio effect                     |
 | Ability to mute scene or individual Sound Objects | Click on 3D object for single sound object, or click checkbox for whole scene | Mute is an expected function for audio manipulation, individual Sound Objects controls gives users flexibility                                              |
+
+
+### Use python3 -m http.server to run locally
