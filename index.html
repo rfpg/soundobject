@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Audio Player</title>
+    <style>
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button id="playButton">Play Audio</button>
+
+    <script>
+        // Create a new AudioContext instance
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        var audioBuffer;
+        var sourceNode;
+
+        // Function to fetch and decode audio file
+        function fetchAudio(url) {
+            fetch(url)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+                .then(decodedAudio => {
+                    audioBuffer = decodedAudio;
+                });
+        }
+
+        // Function to play the audio
+        function playAudio() {
+            if (audioBuffer) {
+                // Stop the previous source node if it exists
+                if (sourceNode) {
+                    sourceNode.stop();
+                }
+
+                // Create a source node from the buffer
+                sourceNode = audioCtx.createBufferSource();
+                sourceNode.buffer = audioBuffer;
+
+                // Connect the source to the context's destination (the speakers)
+                sourceNode.connect(audioCtx.destination);
+
+                // Start playing
+                sourceNode.start();
+            } else {
+                console.log("Audio buffer is not loaded.");
+            }
+        }
+
+        // Fetch your audio file (replace 'path/to/your/audio.file' with your audio file's URL)
+        fetchAudio('audio/beat.wav');
+
+        // Setup event listener for the button
+        document.getElementById('playButton').addEventListener('click', playAudio);
+    </script>
+</body>
+</html>
